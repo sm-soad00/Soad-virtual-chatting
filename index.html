@@ -1,150 +1,123 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>SOAD VIRTUAL CHATTING APP</title>
+  <title>SOAD Virtual Chatting App</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    #chatBox, #userList, #searchSection { display: none; }
-    #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; margin-top: 10px; }
-    .user { border: 1px solid #aaa; padding: 10px; margin: 5px 0; cursor: pointer; background: #f9f9f9; }
-    .user:hover { background: #eee; }
+    body { font-family: Arial; padding: 20px; }
+    #chatUI { display: none; }
+    input, button { margin: 5px 0; padding: 10px; width: 100%; }
   </style>
 </head>
 <body>
-  <h1>SOAD VIRTUAL CHATTING APP</h1>
-  <button id="loginBtn">Login with Google</button>
-  <div id="userInfo"></div>
 
-  <div id="searchSection">
-    <h3>Search User by Username:</h3>
-    <input type="text" id="searchInput" placeholder="Enter username">
-    <button id="searchBtn">Search</button>
-    <div id="userList"></div>
+  <div id="loginUI">
+    <h2>Enter your name to continue:</h2>
+    <input type="text" id="usernameInput" placeholder="Your Name">
+    <button onclick="guestLogin()">Continue</button>
   </div>
 
-  <div id="chatBox">
-    <h3>Chat with <span id="chatWith"></span></h3>
-    <div id="messages"></div>
-    <input type="text" id="messageInput" placeholder="Type your message">
-    <button id="sendBtn">Send</button>
+  <div id="chatUI">
+    <h3 id="welcomeUser"></h3>
+    <input type="text" id="searchInput" placeholder="Search username">
+    <button onclick="searchUser()">Search</button>
+
+    <div id="searchResult"></div>
+    <div id="chatBox" style="display:none;">
+      <h4>Chatting with <span id="chatWith"></span></h4>
+      <div id="messages" style="border:1px solid #ccc; height:200px; overflow-y:scroll;"></div>
+      <input type="text" id="messageInput" placeholder="Type a message">
+      <button onclick="sendMessage()">Send</button>
+    </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getDatabase, ref, set, get, child, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js"></script>
 
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyAsXbJLDpkpCDJk1fRS3obRgURAfKazGZM",
       authDomain: "soad-chat.firebaseapp.com",
+      databaseURL: "https://soad-chat-default-rtdb.firebaseio.com",
       projectId: "soad-chat",
-      storageBucket: "soad-chat.firebasestorage.app",
+      storageBucket: "soad-chat.appspot.com",
       messagingSenderId: "681630266946",
-      appId: "1:681630266946:web:3ea34d837bdab24068dfdb",
-      databaseURL: "https://soad-chat-default-rtdb.firebaseio.com"
+      appId: "1:681630266946:web:3ea34d837bdab24068dfdb"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    let currentUser = null;
-    let chatUser = null;
+    let currentUser = "";
+    let chattingWith = "";
 
-    const loginBtn = document.getElementById("loginBtn");
-    const userInfo = document.getElementById("userInfo");
-    const searchSection = document.getElementById("searchSection");
-    const searchInput = document.getElementById("searchInput");
-    const searchBtn = document.getElementById("searchBtn");
-    const userList = document.getElementById("userList");
-    const chatBox = document.getElementById("chatBox");
-    const chatWith = document.getElementById("chatWith");
-    const messagesDiv = document.getElementById("messages");
-    const messageInput = document.getElementById("messageInput");
-    const sendBtn = document.getElementById("sendBtn");
+    function guestLogin() {
+      const name = document.getElementById("usernameInput").value.trim();
+      if (!name) return alert("Enter a name");
+      currentUser = name;
 
-    loginBtn.addEventListener("click", async () => {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-    });
+      // Save to DB
+      db.ref("users/" + name).set({ active: true });
 
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        currentUser = user;
-        userInfo.innerHTML = `Logged in as: ${user.displayName} (${user.email})`;
+      document.getElementById("loginUI").style.display = "none";
+      document.getElementById("chatUI").style.display = "block";
+      document.getElementById("welcomeUser").innerText = "Welcome, " + name;
+    }
 
-        // Ask for a custom username if not saved
-        const userRef = ref(db, "users/" + user.uid);
-        const snapshot = await get(userRef);
-        if (!snapshot.exists()) {
-          const username = prompt("Enter your username (unique):").toLowerCase();
-          await set(userRef, {
-            uid: user.uid,
-            email: user.email,
-            name: user.displayName,
-            username: username
-          });
+    function searchUser() {
+      const searchName = document.getElementById("searchInput").value.trim();
+      if (!searchName || searchName === currentUser) return;
+
+      db.ref("users/" + searchName).get().then(snapshot => {
+        if (snapshot.exists()) {
+          document.getElementById("searchResult").innerHTML = `
+            <p>User found: <strong>${searchName}</strong></p>
+            <button onclick="startChat('${searchName}')">Start Chat</button>
+          `;
+        } else {
+          document.getElementById("searchResult").innerText = "User not found.";
         }
-
-        searchSection.style.display = "block";
-      }
-    });
-
-    searchBtn.addEventListener("click", async () => {
-      const query = searchInput.value.toLowerCase();
-      const usersRef = ref(db, "users");
-      const snapshot = await get(usersRef);
-      userList.innerHTML = "";
-
-      snapshot.forEach(child => {
-        const user = child.val();
-        if (user.username === query && user.uid !== currentUser.uid) {
-          const div = document.createElement("div");
-          div.className = "user";
-          div.textContent = `${user.name} (${user.username})`;
-          div.addEventListener("click", () => startChat(user));
-          userList.appendChild(div);
-        }
-      });
-
-      if (userList.innerHTML === "") {
-        userList.innerHTML = "<p>No user found</p>";
-      }
-    });
-
-    function startChat(user) {
-      chatUser = user;
-      chatWith.textContent = user.username;
-      chatBox.style.display = "block";
-      messagesDiv.innerHTML = "";
-
-      const path = `messages/${currentUser.uid}_${chatUser.uid}`;
-      const messagesRef = ref(db, path);
-      onChildAdded(messagesRef, (snap) => {
-        const msg = snap.val();
-        const p = document.createElement("p");
-        p.textContent = `[${msg.from === currentUser.uid ? 'You' : chatUser.username}]: ${msg.text}`;
-        messagesDiv.appendChild(p);
       });
     }
 
-    sendBtn.addEventListener("click", () => {
-      const text = messageInput.value;
-      if (!text || !chatUser) return;
+    function startChat(partner) {
+      chattingWith = partner;
+      document.getElementById("chatBox").style.display = "block";
+      document.getElementById("chatWith").innerText = partner;
+      listenForMessages();
+    }
 
-      const message = {
-        from: currentUser.uid,
-        to: chatUser.uid,
-        text: text,
+    function sendMessage() {
+      const msg = document.getElementById("messageInput").value;
+      if (!msg) return;
+
+      const chatID = generateChatID(currentUser, chattingWith);
+      const msgData = {
+        sender: currentUser,
+        text: msg,
         time: Date.now()
       };
 
-      const senderPath = `messages/${currentUser.uid}_${chatUser.uid}`;
-      const receiverPath = `messages/${chatUser.uid}_${currentUser.uid}`;
-      push(ref(db, senderPath), message);
-      push(ref(db, receiverPath), message);
-      messageInput.value = "";
-    });
+      db.ref("chats/" + chatID).push(msgData);
+      document.getElementById("messageInput").value = "";
+    }
+
+    function listenForMessages() {
+      const chatID = generateChatID(currentUser, chattingWith);
+      db.ref("chats/" + chatID).on("value", (snapshot) => {
+        const messages = snapshot.val();
+        const msgBox = document.getElementById("messages");
+        msgBox.innerHTML = "";
+        for (let id in messages) {
+          const m = messages[id];
+          msgBox.innerHTML += `<p><strong>${m.sender}:</strong> ${m.text}</p>`;
+        }
+        msgBox.scrollTop = msgBox.scrollHeight;
+      });
+    }
+
+    function generateChatID(user1, user2) {
+      return [user1, user2].sort().join("_");
+    }
   </script>
 </body>
 </html>
