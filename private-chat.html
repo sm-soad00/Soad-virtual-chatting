@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Private Chat</title>
+</head>
+<body>
+  <h2>Private Chat</h2>
+  <input type="text" id="receiver" placeholder="Enter username to chat with">
+  <button onclick="startPrivateChat()">Start</button>
+  <div id="private-box" style="border:1px solid #000; height:300px; overflow-y:scroll; margin-top:10px;"></div>
+  <input type="text" id="private-message" placeholder="Message...">
+  <button onclick="sendPrivate()">Send</button>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script>
+    const firebaseConfig = {
+      databaseURL: "https://soad-virtual-chatting-default-rtdb.firebaseio.com"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const username = localStorage.getItem("username") || "Unknown";
+    let receiverName = "";
+
+    function startPrivateChat() {
+      receiverName = document.getElementById("receiver").value;
+      if (!receiverName) return alert("Enter username to chat with");
+      listenPrivate();
+    }
+
+    function sendPrivate() {
+      const msg = document.getElementById("private-message").value;
+      if (!msg || !receiverName) return;
+      const chatId = getChatId(username, receiverName);
+      db.ref("private/" + chatId).push({
+        user: username,
+        text: msg,
+        time: Date.now()
+      });
+      document.getElementById("private-message").value = "";
+    }
+
+    function listenPrivate() {
+      const chatId = getChatId(username, receiverName);
+      document.getElementById("private-box").innerHTML = "";
+      db.ref("private/" + chatId).on("child_added", snapshot => {
+        const msg = snapshot.val();
+        const box = document.getElementById("private-box");
+        const el = document.createElement("div");
+        el.textContent = msg.user + ": " + msg.text;
+        box.appendChild(el);
+        box.scrollTop = box.scrollHeight;
+      });
+    }
+
+    function getChatId(user1, user2) {
+      return [user1, user2].sort().join("_");
+    }
+  </script>
+</body>
+</html>
