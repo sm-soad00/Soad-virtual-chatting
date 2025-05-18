@@ -1,28 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>SOAD Chat</title>
+  <title>SOAD VIRTUAL CHATTING APP</title>
   <style>
-    #messages { border: 1px solid #ccc; height: 300px; overflow-y: scroll; padding: 10px; margin-top: 10px; }
-    #messages p { margin: 5px 0; }
+    body { font-family: sans-serif; padding: 20px; }
+    #chatBox, #userList, #searchSection { display: none; }
+    #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; margin-top: 10px; }
+    .user { border: 1px solid #aaa; padding: 10px; margin: 5px 0; cursor: pointer; background: #f9f9f9; }
+    .user:hover { background: #eee; }
   </style>
 </head>
 <body>
-  <h2>Welcome to SOAD Chat</h2>
-  <p id="currentUser"></p>
-  
-  <label>Recipient Username:</label>
-  <input type="text" id="receiverUsername" placeholder="Enter recipient's username"><br>
+  <h1>SOAD VIRTUAL CHATTING APP</h1>
+  <button id="loginBtn">Login with Google</button>
+  <div id="userInfo"></div>
 
-  <input type="text" id="messageInput" placeholder="Type your message">
-  <button id="sendBtn">Send</button>
+  <div id="searchSection">
+    <h3>Search User by Username:</h3>
+    <input type="text" id="searchInput" placeholder="Enter username">
+    <button id="searchBtn">Search</button>
+    <div id="userList"></div>
+  </div>
 
-  <div id="messages"></div>
+  <div id="chatBox">
+    <h3>Chat with <span id="chatWith"></span></h3>
+    <div id="messages"></div>
+    <input type="text" id="messageInput" placeholder="Type your message">
+    <button id="sendBtn">Send</button>
+  </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getDatabase, ref, set, get, child, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAsXbJLDpkpCDJk1fRS3obRgURAfKazGZM",
@@ -35,54 +45,104 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
     const auth = getAuth(app);
+    const db = getDatabase(app);
 
-    const messageInput = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const messagesDiv = document.getElementById('messages');
-    const receiverUsernameInput = document.getElementById('receiverUsername');
-    const currentUserDisplay = document.getElementById('currentUser');
+    let currentUser = null;
+    let chatUser = null;
 
-    let currentUserEmail = "";
+    const loginBtn = document.getElementById("loginBtn");
+    const userInfo = document.getElementById("userInfo");
+    const searchSection = document.getElementById("searchSection");
+    const searchInput = document.getElementById("searchInput");
+    const searchBtn = document.getElementById("searchBtn");
+    const userList = document.getElementById("userList");
+    const chatBox = document.getElementById("chatBox");
+    const chatWith = document.getElementById("chatWith");
+    const messagesDiv = document.getElementById("messages");
+    const messageInput = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
 
-    onAuthStateChanged(auth, (user) => {
+    loginBtn.addEventListener("click", async () => {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+    });
+
+    onAuthStateChanged(auth, async (user) => {
       if (user) {
-        currentUserEmail = user.email.replace(/\./g, "_");
-        currentUserDisplay.textContent = `Logged in as: ${user.displayName} (${user.email})`;
+        currentUser = user;
+        userInfo.innerHTML = `Logged in as: ${user.displayName} (${user.email})`;
 
-        // Start listening to messages for this user
-        const userChatRef = ref(db, "chats/" + currentUserEmail);
-        onChildAdded(userChatRef, (data) => {
-          const msg = data.val();
-          const p = document.createElement("p");
-          p.textContent = `[${msg.sender}]: ${msg.text}`;
-          messagesDiv.appendChild(p);
-        });
-      } else {
-        alert("Please login first.");
+        // Ask for a custom username if not saved
+        const userRef = ref(db, "users/" + user.uid);
+        const snapshot = await get(userRef);
+        if (!snapshot.exists()) {
+          const username = prompt("Enter your username (unique):").toLowerCase();
+          await set(userRef, {
+            uid: user.uid,
+            email: user.email,
+            name: user.displayName,
+            username: username
+          });
+        }
+
+        searchSection.style.display = "block";
       }
     });
 
-    sendBtn.addEventListener('click', () => {
-      const text = messageInput.value;
-      const receiver = receiverUsernameInput.value.replace(/\./g, "_");
-      if (!receiver || !text) return alert("Username & message required");
+    searchBtn.addEventListener("click", async () => {
+      const query = searchInput.value.toLowerCase();
+      const usersRef = ref(db, "users");
+      const snapshot = await get(usersRef);
+      userList.innerHTML = "";
 
-      const msgData = {
-        sender: currentUserEmail,
+      snapshot.forEach(child => {
+        const user = child.val();
+        if (user.username === query && user.uid !== currentUser.uid) {
+          const div = document.createElement("div");
+          div.className = "user";
+          div.textContent = `${user.name} (${user.username})`;
+          div.addEventListener("click", () => startChat(user));
+          userList.appendChild(div);
+        }
+      });
+
+      if (userList.innerHTML === "") {
+        userList.innerHTML = "<p>No user found</p>";
+      }
+    });
+
+    function startChat(user) {
+      chatUser = user;
+      chatWith.textContent = user.username;
+      chatBox.style.display = "block";
+      messagesDiv.innerHTML = "";
+
+      const path = `messages/${currentUser.uid}_${chatUser.uid}`;
+      const messagesRef = ref(db, path);
+      onChildAdded(messagesRef, (snap) => {
+        const msg = snap.val();
+        const p = document.createElement("p");
+        p.textContent = `[${msg.from === currentUser.uid ? 'You' : chatUser.username}]: ${msg.text}`;
+        messagesDiv.appendChild(p);
+      });
+    }
+
+    sendBtn.addEventListener("click", () => {
+      const text = messageInput.value;
+      if (!text || !chatUser) return;
+
+      const message = {
+        from: currentUser.uid,
+        to: chatUser.uid,
         text: text,
-        timestamp: Date.now()
+        time: Date.now()
       };
 
-      // Send to receiver's inbox
-      const receiverRef = ref(db, "chats/" + receiver);
-      push(receiverRef, msgData);
-
-      // Optional: Save to sender's copy too
-      const senderRef = ref(db, "chats/" + currentUserEmail);
-      push(senderRef, { ...msgData, to: receiver });
-
+      const senderPath = `messages/${currentUser.uid}_${chatUser.uid}`;
+      const receiverPath = `messages/${chatUser.uid}_${currentUser.uid}`;
+      push(ref(db, senderPath), message);
+      push(ref(db, receiverPath), message);
       messageInput.value = "";
     });
   </script>
