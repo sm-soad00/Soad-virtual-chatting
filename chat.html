@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SOAD Group Chat</title>
+</head>
+<body>
+  <h2>Welcome to SOAD Group Chat</h2>
+  <div id="chat-box" style="border:1px solid #000; height:300px; overflow-y:scroll;"></div>
+  <input type="text" id="message" placeholder="Type a message...">
+  <button onclick="sendMessage()">Send</button>
+  <button onclick="goPrivate()">Private Chat</button>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script>
+    const firebaseConfig = {
+      databaseURL: "https://soad-virtual-chatting-default-rtdb.firebaseio.com"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const username = localStorage.getItem("username") || "Unknown";
+
+    function sendMessage() {
+      const msg = document.getElementById("message").value;
+      if (!msg) return;
+      db.ref("group").push({
+        user: username,
+        text: msg,
+        time: Date.now()
+      });
+      document.getElementById("message").value = "";
+    }
+
+    db.ref("group").on("child_added", snapshot => {
+      const msg = snapshot.val();
+      const msgBox = document.getElementById("chat-box");
+      const el = document.createElement("div");
+      el.textContent = msg.user + ": " + msg.text;
+      msgBox.appendChild(el);
+      msgBox.scrollTop = msgBox.scrollHeight;
+    });
+
+    function goPrivate() {
+      window.location.href = "private-chat.html";
+    }
+  </script>
+</body>
+</html>
