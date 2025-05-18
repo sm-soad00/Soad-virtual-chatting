@@ -1,68 +1,108 @@
-<!DOCTYPE html>
-<html>
+<!-- index.html --><!DOCTYPE html><html>
 <head>
-  <meta charset="UTF-8">
-  <title>SOAD Realtime Chat</title>
-  <style>
-    body { font-family: Arial; background: #f0f0f0; padding: 20px; }
-    h2 { color: #333; }
-    #messages { border: 1px solid #ccc; height: 300px; overflow-y: scroll; background: #fff; padding: 10px; }
-    .msg { margin-bottom: 10px; }
-    input, button { padding: 10px; font-size: 16px; margin-top: 10px; width: calc(100% - 20px); }
-    #message { width: 75%; }
-    #sendBtn { width: 20%; }
-  </style>
+  <title>SOAD Private Chat - Login</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
+  <h2>Welcome to SOAD Private Chat</h2>
+  <input type="text" id="username" placeholder="Enter your username">
+  <button onclick="login()">Login</button>  <script>
+    const firebaseConfig = {
+      databaseURL: "https://soad-virtual-chatting-default-rtdb.firebaseio.com"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-<h2>SOAD Realtime Chat</h2>
+    function login() {
+      const username = document.getElementById('username').value.trim();
+      if (!username) return alert("Please enter a name");
 
-<input type="text" id="username" placeholder="Enter your name"><br><br>
-
-<div id="messages"></div>
-
-<input type="text" id="message" placeholder="Type a message">
-<button id="sendBtn" onclick="sendMessage()">Send</button>
-
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
-<script>
-  // তোমার Firebase config
-  const firebaseConfig = {
-    databaseURL: "https://soad-virtual-chatting-default-rtdb.firebaseio.com"
-  };
-
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-  const messagesRef = db.ref("messages");
-
-  // মেসেজ পাঠানো
-  function sendMessage() {
-    const username = document.getElementById("username").value.trim();
-    const message = document.getElementById("message").value.trim();
-
-    if (username && message) {
-      messagesRef.push({
-        sender: username,
-        text: message,
-        timestamp: Date.now()
-      });
-      document.getElementById("message").value = "";
+      db.ref("users/" + username).set({ username });
+      localStorage.setItem("username", username);
+      window.location.href = "chat.html";
     }
-  }
+  </script></body>
+</html><!-- chat.html --><!DOCTYPE html><html>
+<head>
+  <title>SOAD Private Chat</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <h2>SOAD Private Chat</h2>
+  <p id="greeting"></p>  <input type="text" id="searchBox" placeholder="Search user...">
+  <div id="searchResult"></div>  <script>
+    const firebaseConfig = {
+      databaseURL: "https://soad-virtual-chatting-default-rtdb.firebaseio.com"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-  // রিয়েলটাইমে মেসেজ দেখানো
-  messagesRef.on("child_added", function(snapshot) {
-    const msg = snapshot.val();
-    const msgDiv = document.createElement("div");
-    msgDiv.className = "msg";
-    msgDiv.textContent = msg.sender + ": " + msg.text;
-    document.getElementById("messages").appendChild(msgDiv);
-    document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
-  });
-</script>
+    const myUsername = localStorage.getItem("username");
+    document.getElementById("greeting").innerText = "Logged in as: " + myUsername;
 
-</body>
+    document.getElementById("searchBox").addEventListener("input", async function () {
+      const query = this.value.toLowerCase();
+      const resultBox = document.getElementById("searchResult");
+      resultBox.innerHTML = "Searching...";
+
+      const usersRef = db.ref("users");
+      const snapshot = await usersRef.once("value");
+      let found = false;
+
+      snapshot.forEach(child => {
+        const username = child.val().username.toLowerCase();
+        if (username === query && username !== myUsername.toLowerCase()) {
+          found = true;
+          resultBox.innerHTML = `<button onclick="startChat('${username}')">Chat with ${username}</button>`;
+        }
+      });
+
+      if (!found) resultBox.innerHTML = "No user found";
+    });
+
+    function startChat(username) {
+      const room = [myUsername, username].sort().join("_");
+      localStorage.setItem("chatWith", username);
+      localStorage.setItem("room", room);
+      window.location.href = "private-chat.html";
+    }
+  </script></body>
+</html><!-- private-chat.html --><!DOCTYPE html><html>
+<head>
+  <title>Private Chat</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <h3>Private Chat with <span id="partner"></span></h3>
+  <div id="messages"></div>  <input type="text" id="messageBox" placeholder="Type message...">
+  <button onclick="sendMessage()">Send</button>  <script>
+    const firebaseConfig = {
+      databaseURL: "https://soad-virtual-chatting-default-rtdb.firebaseio.com"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const myUsername = localStorage.getItem("username");
+    const chatWith = localStorage.getItem("chatWith");
+    const room = localStorage.getItem("room");
+    document.getElementById("partner").innerText = chatWith;
+
+    const messagesRef = db.ref("chats/" + room);
+    messagesRef.on("child_added", snapshot => {
+      const msg = snapshot.val();
+      const div = document.createElement("div");
+      div.innerText = msg.sender + ": " + msg.text;
+      document.getElementById("messages").appendChild(div);
+    });
+
+    function sendMessage() {
+      const text = document.getElementById("messageBox").value;
+      if (!text) return;
+      messagesRef.push({ sender: myUsername, text });
+      document.getElementById("messageBox").value = "";
+    }
+  </script></body>
 </html>
