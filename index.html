@@ -1,42 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>SOAD Private Chat App</title>
+  <title>SOAD Chat</title>
   <style>
-    body { font-family: Arial; max-width: 600px; margin: auto; padding: 20px; }
-    #login-box, #chat-box, #select-user-box { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px #ccc; margin-bottom: 20px; }
-    #chat-box { display: none; }
-    #messages { height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa; margin-bottom: 10px; }
-    .message { margin-bottom: 10px; }
-    .message strong { color: #0066cc; }
+    #messages { border: 1px solid #ccc; height: 300px; overflow-y: scroll; padding: 10px; margin-top: 10px; }
+    #messages p { margin: 5px 0; }
   </style>
 </head>
 <body>
+  <h2>Welcome to SOAD Chat</h2>
+  <p id="currentUser"></p>
+  
+  <label>Recipient Username:</label>
+  <input type="text" id="receiverUsername" placeholder="Enter recipient's username"><br>
 
-  <div id="login-box">
-    <h2>Login with Google</h2>
-    <button id="login-btn">Login</button>
-  </div>
+  <input type="text" id="messageInput" placeholder="Type your message">
+  <button id="sendBtn">Send</button>
 
-  <div id="select-user-box" style="display:none;">
-    <h3>Select User to Chat With:</h3>
-    <input type="text" id="search-user" placeholder="Type user name or email" />
-    <div id="user-list"></div>
-  </div>
-
-  <div id="chat-box">
-    <p>Logged in as <span id="my-name"></span> <button id="logout-btn">Logout</button></p>
-    <p>Chatting with: <span id="chat-with-name"></span></p>
-    <div id="messages"></div>
-    <input type="text" id="message-input" placeholder="Type message here..." />
-    <button id="send-btn">Send</button>
-    <button id="back-btn">Back to user list</button>
-  </div>
+  <div id="messages"></div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getDatabase, ref, set, push, onChildAdded, query, orderByChild, startAt, endAt, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAsXbJLDpkpCDJk1fRS3obRgURAfKazGZM",
@@ -45,177 +31,60 @@
       storageBucket: "soad-chat.firebasestorage.app",
       messagingSenderId: "681630266946",
       appId: "1:681630266946:web:3ea34d837bdab24068dfdb",
-      measurementId: "G-W0Q2Y2SM9W",
       databaseURL: "https://soad-chat-default-rtdb.firebaseio.com"
     };
 
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
     const db = getDatabase(app);
+    const auth = getAuth(app);
 
-    const loginBox = document.getElementById('login-box');
-    const selectUserBox = document.getElementById('select-user-box');
-    const chatBox = document.getElementById('chat-box');
-
-    const loginBtn = document.getElementById('login-btn');
-    const logoutBtn = document.getElementById('logout-btn');
-    const backBtn = document.getElementById('back-btn');
-    const sendBtn = document.getElementById('send-btn');
-
-    const userListDiv = document.getElementById('user-list');
-    const searchUserInput = document.getElementById('search-user');
-
-    const myNameSpan = document.getElementById('my-name');
-    const chatWithNameSpan = document.getElementById('chat-with-name');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
     const messagesDiv = document.getElementById('messages');
-    const messageInput = document.getElementById('message-input');
+    const receiverUsernameInput = document.getElementById('receiverUsername');
+    const currentUserDisplay = document.getElementById('currentUser');
 
-    let currentUser = null;
-    let chatWithUser = null;
-    let chatRoomId = null;
-    let messagesRef = null;
+    let currentUserEmail = "";
 
-    function getChatRoomId(uid1, uid2) {
-      return [uid1, uid2].sort().join('_');
-    }
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUserEmail = user.email.replace(/\./g, "_");
+        currentUserDisplay.textContent = `Logged in as: ${user.displayName} (${user.email})`;
 
-    loginBtn.onclick = async () => {
-      const provider = new GoogleAuthProvider();
-      try {
-        const result = await signInWithPopup(auth, provider);
-        currentUser = result.user;
-
-        await set(ref(db, 'users/' + currentUser.uid), {
-          name: currentUser.displayName,
-          email: currentUser.email,
-          uid: currentUser.uid
+        // Start listening to messages for this user
+        const userChatRef = ref(db, "chats/" + currentUserEmail);
+        onChildAdded(userChatRef, (data) => {
+          const msg = data.val();
+          const p = document.createElement("p");
+          p.textContent = `[${msg.sender}]: ${msg.text}`;
+          messagesDiv.appendChild(p);
         });
-
-        loginBox.style.display = 'none';
-        selectUserBox.style.display = 'block';
-        myNameSpan.textContent = currentUser.displayName;
-
-      } catch (err) {
-        alert('Login failed: ' + err.message);
+      } else {
+        alert("Please login first.");
       }
-    };
+    });
 
-    logoutBtn.onclick = () => {
-      signOut(auth);
-      currentUser = null;
-      chatWithUser = null;
-      chatRoomId = null;
-      loginBox.style.display = 'block';
-      selectUserBox.style.display = 'none';
-      chatBox.style.display = 'none';
-      userListDiv.innerHTML = '';
-      messagesDiv.innerHTML = '';
-    };
+    sendBtn.addEventListener('click', () => {
+      const text = messageInput.value;
+      const receiver = receiverUsernameInput.value.replace(/\./g, "_");
+      if (!receiver || !text) return alert("Username & message required");
 
-    searchUserInput.oninput = async () => {
-      const queryText = searchUserInput.value.toLowerCase();
-      if (!queryText) {
-        userListDiv.innerHTML = '';
-        return;
-      }
-
-      const usersRef = ref(db, 'users');
-      const nameQuery = query(usersRef, orderByChild('name'), startAt(queryText), endAt(queryText + '\uf8ff'));
-      const emailQuery = query(usersRef, orderByChild('email'), startAt(queryText), endAt(queryText + '\uf8ff'));
-
-      userListDiv.innerHTML = '';
-
-      const nameSnap = await get(nameQuery);
-      if (nameSnap.exists()) {
-        nameSnap.forEach(childSnap => {
-          addUserToList(childSnap.val());
-        });
-      }
-
-      const emailSnap = await get(emailQuery);
-      if (emailSnap.exists()) {
-        emailSnap.forEach(childSnap => {
-          addUserToList(childSnap.val());
-        });
-      }
-    };
-
-    function addUserToList(user) {
-      if (user.uid === currentUser.uid) return;
-
-      if (document.getElementById('user-' + user.uid)) return;
-
-      const div = document.createElement('div');
-      div.id = 'user-' + user.uid;
-      div.style.padding = '8px';
-      div.style.borderBottom = '1px solid #ccc';
-      div.style.cursor = 'pointer';
-      div.textContent = user.name + ' (' + user.email + ')';
-      div.onclick = () => startChat(user);
-      userListDiv.appendChild(div);
-    }
-
-    function startChat(user) {
-      chatWithUser = user;
-      chatRoomId = getChatRoomId(currentUser.uid, chatWithUser.uid);
-
-      selectUserBox.style.display = 'none';
-      chatBox.style.display = 'block';
-      chatWithNameSpan.textContent = chatWithUser.name;
-
-      messagesDiv.innerHTML = '';
-      listenMessages();
-    }
-
-    function listenMessages() {
-      if (messagesRef) messagesRef.off();
-
-      messagesRef = ref(db, 'privateChats/' + chatRoomId);
-
-      onChildAdded(messagesRef, snapshot => {
-        const msg = snapshot.val();
-        displayMessage(msg);
-      });
-    }
-
-    function displayMessage(msg) {
-      const div = document.createElement('div');
-      div.classList.add('message');
-      const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : '';
-      const fromMe = msg.senderUid === currentUser.uid;
-
-      div.style.textAlign = fromMe ? 'right' : 'left';
-      div.innerHTML = `<strong>${msg.senderName}</strong>: ${msg.text} <br><small style="color:#666;">${time}</small>`;
-
-      messagesDiv.appendChild(div);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    }
-
-    sendBtn.onclick = async () => {
-      const text = messageInput.value.trim();
-      if (!text) return alert('Type a message');
-      if (!chatRoomId) return alert('No chat room selected');
-
-      const newMsgRef = push(ref(db, 'privateChats/' + chatRoomId));
-      await set(newMsgRef, {
-        text,
-        senderUid: currentUser.uid,
-        senderName: currentUser.displayName,
+      const msgData = {
+        sender: currentUserEmail,
+        text: text,
         timestamp: Date.now()
-      });
+      };
 
-      messageInput.value = '';
-    };
+      // Send to receiver's inbox
+      const receiverRef = ref(db, "chats/" + receiver);
+      push(receiverRef, msgData);
 
-    backBtn.onclick = () => {
-      chatBox.style.display = 'none';
-      selectUserBox.style.display = 'block';
-      chatWithUser = null;
-      chatRoomId = null;
-      messagesDiv.innerHTML = '';
-    };
+      // Optional: Save to sender's copy too
+      const senderRef = ref(db, "chats/" + currentUserEmail);
+      push(senderRef, { ...msgData, to: receiver });
 
+      messageInput.value = "";
+    });
   </script>
-
 </body>
 </html>
