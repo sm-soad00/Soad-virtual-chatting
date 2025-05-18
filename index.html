@@ -1,123 +1,164 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>SOAD Virtual Chatting App</title>
-  <style>
-    body { font-family: Arial; padding: 20px; }
-    #chatUI { display: none; }
-    input, button { margin: 5px 0; padding: 10px; width: 100%; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SOAD Virtual Chatting App</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  #loginSection, #chatSection { max-width: 500px; margin: auto; }
+  #loginSection { text-align: center; }
+  #chatSection { display: none; }
+  #userList { border: 1px solid #ddd; height: 200px; overflow-y: auto; padding: 5px; margin-bottom: 10px; }
+  #messages { border: 1px solid #ccc; height: 250px; overflow-y: auto; padding: 10px; margin-bottom: 10px; }
+  #messages p { margin: 5px 0; }
+  .msgFrom { font-weight: bold; color: green; }
+  .msgTo { font-weight: bold; color: blue; }
+  input, button { padding: 8px; font-size: 16px; }
+  input[type=text] { width: 70%; }
+  button { cursor: pointer; }
+</style>
 </head>
 <body>
 
-  <div id="loginUI">
-    <h2>Enter your name to continue:</h2>
-    <input type="text" id="usernameInput" placeholder="Your Name">
-    <button onclick="guestLogin()">Continue</button>
-  </div>
+<div id="loginSection">
+  <h2>SOAD Virtual Chatting App</h2>
+  <input type="text" id="usernameInput" placeholder="Enter your name" />
+  <button onclick="login()">Login</button>
+  <p style="color:red;" id="loginError"></p>
+</div>
 
-  <div id="chatUI">
-    <h3 id="welcomeUser"></h3>
-    <input type="text" id="searchInput" placeholder="Search username">
-    <button onclick="searchUser()">Search</button>
+<div id="chatSection">
+  <h3>Welcome, <span id="currentUserName"></span></h3>
+  
+  <input type="text" id="searchUser" placeholder="Search user by name" oninput="searchUsers()" autocomplete="off"/>
+  <div id="userList"></div>
 
-    <div id="searchResult"></div>
-    <div id="chatBox" style="display:none;">
-      <h4>Chatting with <span id="chatWith"></span></h4>
-      <div id="messages" style="border:1px solid #ccc; height:200px; overflow-y:scroll;"></div>
-      <input type="text" id="messageInput" placeholder="Type a message">
-      <button onclick="sendMessage()">Send</button>
-    </div>
-  </div>
+  <h4>Chat with <span id="chatWithUser">[No user selected]</span></h4>
+  <div id="messages"></div>
+  <input type="text" id="msgInput" placeholder="Type your message" />
+  <button onclick="sendMessage()">Send</button>
+</div>
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js"></script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js"></script>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyAsXbJLDpkpCDJk1fRS3obRgURAfKazGZM",
-      authDomain: "soad-chat.firebaseapp.com",
-      databaseURL: "https://soad-chat-default-rtdb.firebaseio.com",
-      projectId: "soad-chat",
-      storageBucket: "soad-chat.appspot.com",
-      messagingSenderId: "681630266946",
-      appId: "1:681630266946:web:3ea34d837bdab24068dfdb"
-    };
+<script>
+  // === Firebase Configuration - তোমার Firebase Console থেকে পরিবর্তন করবে ===
+  const firebaseConfig = {
+    apiKey: "AIzaSyAsXbJLDpkpCDJk1fRS3obRgURAfKazGZM",
+    authDomain: "soad-chat.firebaseapp.com",
+    databaseURL: "https://soad-chat-default-rtdb.firebaseio.com",
+    projectId: "soad-chat",
+    storageBucket: "soad-chat.appspot.com",
+    messagingSenderId: "681630266946",
+    appId: "1:681630266946:web:3ea34d837bdab24068dfdb"
+  };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-    let currentUser = "";
-    let chattingWith = "";
+  let currentUser = null;
+  let chatWith = null;
+  let messagesRef = null;
 
-    function guestLogin() {
-      const name = document.getElementById("usernameInput").value.trim();
-      if (!name) return alert("Enter a name");
-      currentUser = name;
-
-      // Save to DB
-      db.ref("users/" + name).set({ active: true });
-
-      document.getElementById("loginUI").style.display = "none";
-      document.getElementById("chatUI").style.display = "block";
-      document.getElementById("welcomeUser").innerText = "Welcome, " + name;
+  // Login function
+  function login() {
+    const name = document.getElementById('usernameInput').value.trim();
+    if (!name) {
+      document.getElementById('loginError').innerText = "Please enter a name";
+      return;
     }
+    currentUser = name;
+    document.getElementById('loginError').innerText = "";
+    document.getElementById('currentUserName').innerText = currentUser;
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('chatSection').style.display = 'block';
 
-    function searchUser() {
-      const searchName = document.getElementById("searchInput").value.trim();
-      if (!searchName || searchName === currentUser) return;
+    // Save user in DB users list
+    db.ref('users/' + currentUser).set({ name: currentUser });
 
-      db.ref("users/" + searchName).get().then(snapshot => {
-        if (snapshot.exists()) {
-          document.getElementById("searchResult").innerHTML = `
-            <p>User found: <strong>${searchName}</strong></p>
-            <button onclick="startChat('${searchName}')">Start Chat</button>
-          `;
-        } else {
-          document.getElementById("searchResult").innerText = "User not found.";
+    // Load all users initially
+    loadAllUsers();
+  }
+
+  // Load all users except currentUser
+  function loadAllUsers() {
+    db.ref('users').on('value', snapshot => {
+      const users = snapshot.val() || {};
+      let html = '';
+      for (const user in users) {
+        if (user !== currentUser) {
+          html += `<p style="cursor:pointer;" onclick="selectUser('${user}')">${user}</p>`;
         }
-      });
-    }
+      }
+      document.getElementById('userList').innerHTML = html || "<i>No other users online</i>";
+    });
+  }
 
-    function startChat(partner) {
-      chattingWith = partner;
-      document.getElementById("chatBox").style.display = "block";
-      document.getElementById("chatWith").innerText = partner;
-      listenForMessages();
-    }
-
-    function sendMessage() {
-      const msg = document.getElementById("messageInput").value;
-      if (!msg) return;
-
-      const chatID = generateChatID(currentUser, chattingWith);
-      const msgData = {
-        sender: currentUser,
-        text: msg,
-        time: Date.now()
-      };
-
-      db.ref("chats/" + chatID).push(msgData);
-      document.getElementById("messageInput").value = "";
-    }
-
-    function listenForMessages() {
-      const chatID = generateChatID(currentUser, chattingWith);
-      db.ref("chats/" + chatID).on("value", (snapshot) => {
-        const messages = snapshot.val();
-        const msgBox = document.getElementById("messages");
-        msgBox.innerHTML = "";
-        for (let id in messages) {
-          const m = messages[id];
-          msgBox.innerHTML += `<p><strong>${m.sender}:</strong> ${m.text}</p>`;
+  // Search users by input
+  function searchUsers() {
+    const q = document.getElementById('searchUser').value.toLowerCase();
+    db.ref('users').once('value').then(snapshot => {
+      const users = snapshot.val() || {};
+      let html = '';
+      for (const user in users) {
+        if (user !== currentUser && user.toLowerCase().includes(q)) {
+          html += `<p style="cursor:pointer;" onclick="selectUser('${user}')">${user}</p>`;
         }
-        msgBox.scrollTop = msgBox.scrollHeight;
-      });
-    }
+      }
+      document.getElementById('userList').innerHTML = html || "<i>No users found</i>";
+    });
+  }
 
-    function generateChatID(user1, user2) {
-      return [user1, user2].sort().join("_");
+  // Select a user to chat with
+  function selectUser(user) {
+    chatWith = user;
+    document.getElementById('chatWithUser').innerText = chatWith;
+    document.getElementById('messages').innerHTML = '';
+    if (messagesRef) messagesRef.off();
+
+    // Messages path: use sorted keys for consistency
+    const chatId = [currentUser, chatWith].sort().join('_');
+    messagesRef = db.ref('privateChats/' + chatId);
+
+    // Listen for messages in this chat
+    messagesRef.on('value', snapshot => {
+      const msgs = snapshot.val() || {};
+      const msgsDiv = document.getElementById('messages');
+      msgsDiv.innerHTML = '';
+      for (const key in msgs) {
+        const m = msgs[key];
+        const who = m.sender === currentUser ? 'You' : chatWith;
+        const color = m.sender === currentUser ? 'green' : 'blue';
+        const p = document.createElement('p');
+        p.innerHTML = `<span style="color:${color};font-weight:bold">${who}:</span> ${m.text}`;
+        msgsDiv.appendChild(p);
+      }
+      msgsDiv.scrollTop = msgsDiv.scrollHeight;
+    });
+  }
+
+  // Send message
+  function sendMessage() {
+    const text = document.getElementById('msgInput').value.trim();
+    if (!text) return;
+    if (!chatWith) {
+      alert("Select a user to chat with first");
+      return;
     }
-  </script>
+    const chatId = [currentUser, chatWith].sort().join('_');
+    const newMsgRef = db.ref('privateChats/' + chatId).push();
+    newMsgRef.set({
+      sender: currentUser,
+      text: text,
+      timestamp: Date.now()
+    });
+    document.getElementById('msgInput').value = '';
+  }
+</script>
+
 </body>
 </html>
