@@ -1,12 +1,19 @@
-<!-- index.html --><!DOCTYPE html><html>
+<!-- login.html --><!DOCTYPE html><html>
 <head>
   <title>SOAD Private Chat - Login</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: Arial; text-align: center; margin-top: 100px; }
+    input { padding: 10px; font-size: 16px; width: 250px; }
+    button { padding: 10px 20px; font-size: 16px; margin-top: 10px; }
+  </style>
 </head>
 <body>
-  <h2>Welcome to SOAD Private Chat</h2>
+  <h1>SOAD Chat</h1>
+  <h3>Login with Username</h3>
   <input type="text" id="username" placeholder="Enter your username">
+  <br>
   <button onclick="login()">Login</button>  <script>
     const firebaseConfig = {
       databaseURL: "https://soad-virtual-chatting-default-rtdb.firebaseio.com"
@@ -28,10 +35,16 @@
   <title>SOAD Private Chat</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    input { padding: 10px; width: 300px; font-size: 16px; }
+    button { padding: 10px 20px; font-size: 16px; }
+    #searchResult { margin-top: 15px; }
+  </style>
 </head>
 <body>
-  <h2>SOAD Private Chat</h2>
-  <p id="greeting"></p>  <input type="text" id="searchBox" placeholder="Search user...">
+  <h2>Welcome to SOAD Group Chat</h2>
+  <p id="greeting"></p>  <input type="text" id="searchBox" placeholder="Search user to chat">
   <div id="searchResult"></div>  <script>
     const firebaseConfig = {
       databaseURL: "https://soad-virtual-chatting-default-rtdb.firebaseio.com"
@@ -55,7 +68,7 @@
         const username = child.val().username.toLowerCase();
         if (username === query && username !== myUsername.toLowerCase()) {
           found = true;
-          resultBox.innerHTML = `<button onclick="startChat('${username}')">Chat with ${username}</button>`;
+          resultBox.innerHTML = `<button onclick=\"startChat('${username}')\">Chat with ${username}</button>`;
         }
       });
 
@@ -74,10 +87,18 @@
   <title>Private Chat</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
+    input { padding: 10px; width: 70%; }
+    button { padding: 10px 15px; }
+  </style>
 </head>
 <body>
   <h3>Private Chat with <span id="partner"></span></h3>
-  <div id="messages"></div>  <input type="text" id="messageBox" placeholder="Type message...">
+  <div id="messages"></div>
+  <br>
+  <input type="text" id="messageBox" placeholder="Type message...">
   <button onclick="sendMessage()">Send</button>  <script>
     const firebaseConfig = {
       databaseURL: "https://soad-virtual-chatting-default-rtdb.firebaseio.com"
@@ -91,6 +112,7 @@
     document.getElementById("partner").innerText = chatWith;
 
     const messagesRef = db.ref("chats/" + room);
+
     messagesRef.on("child_added", snapshot => {
       const msg = snapshot.val();
       const div = document.createElement("div");
@@ -99,7 +121,7 @@
     });
 
     function sendMessage() {
-      const text = document.getElementById("messageBox").value;
+      const text = document.getElementById("messageBox").value.trim();
       if (!text) return;
       messagesRef.push({ sender: myUsername, text });
       document.getElementById("messageBox").value = "";
