@@ -1,61 +1,102 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Private Chat</title>
+  <title>SOAD Private Chat</title>
+  <style>
+    body {
+      background-color: #0e0e0e;
+      color: white;
+      font-family: sans-serif;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    .msg {
+      margin: 5px 0;
+    }
+    .you {
+      text-align: right;
+      color: #00f3ff;
+    }
+    .other {
+      text-align: left;
+      color: #ffae00;
+    }
+    #inputArea {
+      display: flex;
+      background: #222;
+      padding: 10px;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+    }
+    input {
+      flex: 1;
+      border-radius: 8px 0 0 8px;
+      border: none;
+    }
+    button {
+      background-color: #25d366;
+      color: white;
+      border: none;
+      border-radius: 0 8px 8px 0;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-  <h2>Private Chat</h2>
-  <input type="text" id="receiver" placeholder="Enter username to chat with">
-  <button onclick="startPrivateChat()">Start</button>
-  <div id="private-box" style="border:1px solid #000; height:300px; overflow-y:scroll; margin-top:10px;"></div>
-  <input type="text" id="private-message" placeholder="Message...">
-  <button onclick="sendPrivate()">Send</button>
+  <div id="messages"></div>
+  <div id="inputArea">
+    <input id="messageInput" placeholder="Private message...">
+    <button onclick="sendMessage()">Send</button>
+  </div>
 
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <script>
     const firebaseConfig = {
       databaseURL: "https://soad-virtual-chatting-default-rtdb.firebaseio.com"
     };
     firebase.initializeApp(firebaseConfig);
+
+    const params = new URLSearchParams(window.location.search);
+    const currentUser = params.get('current');
+    const targetUser = params.get('target');
+    if (!currentUser || !targetUser) {
+      alert("Invalid private chat link");
+      throw new Error("Missing user info");
+    }
+
     const db = firebase.database();
+    const chatId = [currentUser, targetUser].sort().join('_');
+    const chatRef = db.ref('private_chats/' + chatId);
 
-    const username = localStorage.getItem("username") || "Unknown";
-    let receiverName = "";
+    const messagesDiv = document.getElementById('messages');
 
-    function startPrivateChat() {
-      receiverName = document.getElementById("receiver").value;
-      if (!receiverName) return alert("Enter username to chat with");
-      listenPrivate();
-    }
+    chatRef.on('child_added', (snap) => {
+      const msg = snap.val();
+      const div = document.createElement('div');
+      div.classList.add('msg');
+      div.classList.add(msg.sender === currentUser ? 'you' : 'other');
+      div.innerText = msg.sender + ': ' + msg.text;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
 
-    function sendPrivate() {
-      const msg = document.getElementById("private-message").value;
-      if (!msg || !receiverName) return;
-      const chatId = getChatId(username, receiverName);
-      db.ref("private/" + chatId).push({
-        user: username,
-        text: msg,
-        time: Date.now()
-      });
-      document.getElementById("private-message").value = "";
-    }
-
-    function listenPrivate() {
-      const chatId = getChatId(username, receiverName);
-      document.getElementById("private-box").innerHTML = "";
-      db.ref("private/" + chatId).on("child_added", snapshot => {
-        const msg = snapshot.val();
-        const box = document.getElementById("private-box");
-        const el = document.createElement("div");
-        el.textContent = msg.user + ": " + msg.text;
-        box.appendChild(el);
-        box.scrollTop = box.scrollHeight;
-      });
-    }
-
-    function getChatId(user1, user2) {
-      return [user1, user2].sort().join("_");
+    function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+      if (text) {
+        chatRef.push({ sender: currentUser, text });
+        input.value = '';
+      }
     }
   </script>
 </body>
