@@ -1,67 +1,64 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>SOAD Private Chat</title>
+  <title>Private Chat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    * {
-      box-sizing: border-box;
-    }
     body {
-      background-color: #0e0e0e;
+      background-color: #121212;
       color: white;
       font-family: sans-serif;
       margin: 0;
+      padding: 0;
       display: flex;
       flex-direction: column;
       height: 100vh;
     }
     #messages {
       flex: 1;
-      overflow-y: auto;
+      overflow-y: scroll;
       padding: 10px;
     }
-    .msg {
-      margin: 5px 0;
+    .message {
+      margin: 10px;
+      padding: 10px;
+      border-radius: 10px;
+      max-width: 70%;
+    }
+    .me {
+      background-color: #03a9f4;
+      align-self: flex-end;
     }
     .you {
-      text-align: right;
-      color: #00f3ff;
+      background-color: #444;
+      align-self: flex-start;
     }
-    .other {
-      text-align: left;
-      color: #ffae00;
-    }
-    #inputArea {
+    #inputBox {
       display: flex;
-      background: #222;
-      padding: 8px;
-      position: sticky;
-      bottom: 0;
+      padding: 10px;
+      background-color: #1e1e1e;
     }
-    input, button {
-      font-size: 16px;
-    }
-    input {
+    #messageInput {
       flex: 1;
       padding: 10px;
-      border-radius: 8px 0 0 8px;
       border: none;
+      border-radius: 8px;
     }
     button {
-      background-color: #25d366;
-      color: white;
+      padding: 10px 15px;
+      margin-left: 10px;
+      background-color: #03a9f4;
       border: none;
-      padding: 10px 16px;
-      border-radius: 0 8px 8px 0;
-      cursor: pointer;
+      border-radius: 8px;
+      color: white;
     }
   </style>
 </head>
 <body>
+
   <div id="messages"></div>
-  <div id="inputArea">
-    <input id="messageInput" placeholder="Private message...">
+  <div id="inputBox">
+    <input type="text" id="messageInput" placeholder="Type a message">
     <button onclick="sendMessage()">Send</button>
   </div>
 
@@ -72,38 +69,45 @@
       databaseURL: "https://soad-virtual-chatting-default-rtdb.firebaseio.com"
     };
     firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    const params = new URLSearchParams(window.location.search);
-    const currentUser = params.get('current');
-    const targetUser = params.get('target');
-    if (!currentUser || !targetUser) {
-      alert("Invalid private chat link");
-      throw new Error("Missing user info");
+    const urlParams = new URLSearchParams(window.location.search);
+    const current = urlParams.get('current');
+    const target = urlParams.get('target');
+
+    if (!current || !target) {
+      document.body.innerHTML = \"Invalid user info\";
+      throw new Error(\"Missing users\");
     }
 
-    const db = firebase.database();
-    const chatId = [currentUser, targetUser].sort().join('_');
-    const chatRef = db.ref('private_chats/' + chatId);
+    const messagesRef = db.ref(`privateChats/${getChatPath(current, target)}`);
 
-    const messagesDiv = document.getElementById('messages');
+    function getChatPath(a, b) {
+      return [a, b].sort().join('_');
+    }
 
-    chatRef.on('child_added', (snap) => {
-      const msg = snap.val();
+    messagesRef.on('child_added', snapshot => {
+      const msg = snapshot.val();
       const div = document.createElement('div');
-      div.classList.add('msg');
-      div.classList.add(msg.sender === currentUser ? 'you' : 'other');
-      div.innerText = msg.sender + ': ' + msg.text;
-      messagesDiv.appendChild(div);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      div.className = 'message ' + (msg.sender === current ? 'me' : 'you');
+      div.textContent = msg.text;
+      document.getElementById('messages').appendChild(div);
+      div.scrollIntoView({ behavior: 'smooth' });
     });
 
     function sendMessage() {
       const input = document.getElementById('messageInput');
       const text = input.value.trim();
-      if (text) {
-        chatRef.push({ sender: currentUser, text });
-        input.value = '';
-      }
+      if (!text) return;
+
+      messagesRef.push({
+        sender: current,
+        receiver: target,
+        text: text,
+        timestamp: Date.now()
+      });
+
+      input.value = '';
     }
   </script>
 </body>
