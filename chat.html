@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat - {{ username }}</title>
+</head>
+<body>
+    <h3>Logged in as: {{ username }}</h3>
+
+    <input type="text" id="search" placeholder="Search users" oninput="filterUsers()" />
+    <ul id="usersList">
+        {% for user in users %}
+            {% if user != username %}
+                <li onclick="startChat('{{ user }}')">{{ user }}</li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+
+    <div id="chatWindow" style="display:none;">
+        <h4>Chat with <span id="chatWith"></span></h4>
+        <div id="messages" style="border:1px solid black; height:200px; overflow-y:scroll;"></div>
+        <input id="messageInput" placeholder="Type message..." />
+        <button onclick="sendMessage()">Send</button>
+        <button onclick="closeChat()">Close</button>
+    </div>
+
+    <script src="/static/script.js"></script>
+    <script>
+        const username = "{{ username }}";
+    </script>
+</body>
+</html>
