@@ -1,16 +1,648 @@
 <!DOCTYPE html>
-<html>
+<html lang="bn">
 <head>
-    <title>Login</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ SOAD CHAT | রিয়েল টাইম ইনস্ট্যান্ট</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Poppins', sans-serif;
+            background: linear-gradient(145deg, #0a0e27 0%, #1a1a3e 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* লগইন পেইজ */
+        .login-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .login-card {
+            background: rgba(15, 25, 45, 0.95);
+            backdrop-filter: blur(12px);
+            padding: 50px 40px;
+            border-radius: 40px;
+            text-align: center;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            width: 380px;
+        }
+
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 10px;
+        }
+
+        .login-card h1 {
+            color: #ff6b35;
+            font-size: 2rem;
+            letter-spacing: 2px;
+        }
+
+        .login-card .sub {
+            color: #a0aec0;
+            margin-bottom: 30px;
+            font-size: 0.8rem;
+        }
+
+        .login-card input {
+            width: 100%;
+            padding: 14px 18px;
+            margin: 12px 0;
+            border: 2px solid #2d3748;
+            border-radius: 50px;
+            font-size: 1rem;
+            background: #1a202c;
+            color: white;
+            transition: 0.3s;
+            outline: none;
+        }
+
+        .login-card input:focus {
+            border-color: #ff6b35;
+            box-shadow: 0 0 0 3px rgba(255,107,53,0.2);
+        }
+
+        .login-card button {
+            background: linear-gradient(135deg, #ff6b35, #ff4500);
+            color: white;
+            border: none;
+            padding: 14px 35px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: 0.3s;
+        }
+
+        .login-card button:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 25px rgba(255,107,53,0.4);
+        }
+
+        .error-msg {
+            color: #ff6b6b;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            display: none;
+        }
+
+        /* চ্যাট পেইজ */
+        .chat-container {
+            display: flex;
+            width: 95vw;
+            max-width: 1400px;
+            height: 90vh;
+            background: #0f172a;
+            border-radius: 30px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            animation: slideUp 0.5s ease;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #0f172a 0%, #0a0f1f 100%);
+            border-right: 1px solid #1e293b;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            border-bottom: 1px solid #1e293b;
+            text-align: center;
+        }
+
+        .sidebar-header h2 {
+            color: #ff6b35;
+            font-size: 1.8rem;
+        }
+
+        .user-info {
+            padding: 20px;
+            background: rgba(255,107,53,0.1);
+            margin: 15px;
+            border-radius: 20px;
+            text-align: center;
+        }
+
+        .user-info .username-display {
+            color: white;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+
+        .logout-btn {
+            background: #ef4444;
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .online-section {
+            flex: 1;
+            padding: 20px;
+        }
+
+        .online-title {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            margin-bottom: 15px;
+        }
+
+        .online-users-list {
+            list-style: none;
+            max-height: 350px;
+            overflow-y: auto;
+        }
+
+        .online-users-list li {
+            padding: 12px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #e2e8f0;
+        }
+
+        .online-users-list li:hover {
+            background: rgba(255,107,53,0.2);
+        }
+
+        .online-users-list li.active {
+            background: rgba(255,107,53,0.3);
+            border-left: 3px solid #ff6b35;
+        }
+
+        .main-chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 20px 25px;
+            background: #1a1f35;
+            border-bottom: 1px solid #2d3748;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header h3 {
+            color: white;
+        }
+
+        .chat-header .chat-status {
+            font-size: 0.7rem;
+            color: #48bb78;
+        }
+
+        .back-btn {
+            background: #2d3748;
+            border: none;
+            color: white;
+            padding: 8px 18px;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+
+        .messages-area {
+            flex: 1;
+            padding: 25px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 12px 18px;
+            border-radius: 22px;
+            animation: fadeInMsg 0.2s ease;
+        }
+
+        .message.own {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #ff6b35, #ff4500);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.other {
+            align-self: flex-start;
+            background: #1e293b;
+            color: #e2e8f0;
+            border-bottom-left-radius: 5px;
+        }
+
+        .message .sender {
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin-bottom: 4px;
+            display: block;
+            color: #ff6b35;
+        }
+
+        .message small {
+            font-size: 0.6rem;
+            opacity: 0.7;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .system-msg {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #64748b;
+            padding: 8px;
+            font-style: italic;
+        }
+
+        .typing-indicator {
+            padding: 8px 25px;
+            font-size: 0.75rem;
+            color: #ff6b35;
+            min-height: 35px;
+            background: #0a0f1f;
+            border-top: 1px solid #1e293b;
+        }
+
+        .input-area {
+            display: flex;
+            padding: 20px 25px;
+            gap: 12px;
+            background: #0f172a;
+            border-top: 1px solid #1e293b;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 2px solid #2d3748;
+            border-radius: 50px;
+            font-size: 1rem;
+            background: #1a202c;
+            color: white;
+            outline: none;
+        }
+
+        .input-area input:focus {
+            border-color: #ff6b35;
+        }
+
+        .input-area button {
+            background: linear-gradient(135deg, #ff6b35, #ff4500);
+            border: none;
+            padding: 0 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInMsg {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ff6b35;
+            border-radius: 10px;
+        }
+    </style>
 </head>
 <body>
-    <h2>Login</h2>
-    {% if error %}
-        <p style="color:red;">{{ error }}</p>
-    {% endif %}
-    <form method="post" action="/login">
-        <input type="text" name="username" placeholder="Enter username" required />
-        <button type="submit">Login</button>
-    </form>
-</body>
-</html>
+
+<div id="loginPage" class="login-container">
+    <div class="login-card">
+        <div class="logo">💬⚡</div>
+        <h1>SOAD CHAT</h1>
+        <div class="sub">রিয়েল টাইম ইনস্ট্যান্ট মেসেজিং</div>
+        <input type="text" id="loginUsername" placeholder="👤 ইউজারনেম" maxlength="20">
+        <input type="password" id="loginPassword" placeholder="🔒 পাসওয়ার্ড">
+        <button onclick="doLogin()">🚀 লগইন করুন</button>
+        <div id="loginError" class="error-msg">❌ ভুল নাম বা পাসওয়ার্ড!</div>
+    </div>
+</div>
+
+<div id="chatPage" style="display: none;">
+    <div class="chat-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>SOAD</h2>
+            </div>
+            <div class="user-info">
+                <div class="username-display" id="currentUserName">-</div>
+                <button class="logout-btn" onclick="doLogout()">🚪 লগআউট</button>
+            </div>
+            <div class="online-section">
+                <div class="online-title">🟢 অনলাইন (ক্লিক করে প্রাইভেট চ্যাট)</div>
+                <ul class="online-users-list" id="onlineUsersList"></ul>
+            </div>
+        </div>
+
+        <div class="main-chat">
+            <div class="chat-header">
+                <div>
+                    <h3 id="chatWithName">সকলের সাথে 💬</h3>
+                    <div class="chat-status" id="chatStatus">পাবলিক চ্যাট</div>
+                </div>
+                <button class="back-btn" id="backToPublicBtn" style="display: none;" onclick="switchToPublic()">🌍 পাবলিকে যান</button>
+            </div>
+
+            <div class="messages-area" id="messagesArea">
+                <div class="system-msg">✨ SOAD চ্যাটে স্বাগতম! রিয়েল টাইমে কথা বলুন...</div>
+            </div>
+
+            <div class="typing-indicator" id="typingIndicator"></div>
+
+            <div class="input-area">
+                <input type="text" id="messageInput" placeholder="📝 মেসেজ লিখুন..." autocomplete="off">
+                <button id="sendBtn">📨 পাঠান</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ======================== কনফিগারেশন ========================
+    let currentUser = null;
+    let currentChatWith = null; // null = public, else = username
+    let typingTimeout = null;
+    
+    // ডিফল্ট ইউজার (নাম + পাস)
+    let users = [
+        { username: "soad", password: "1234", online: true, lastSeen: Date.now() },
+        { username: "riya", password: "1234", online: true, lastSeen: Date.now() },
+        { username: "tanvir", password: "1234", online: true, lastSeen: Date.now() },
+        { username: "nusrat", password: "1234", online: true, lastSeen: Date.now() },
+        { username: "rakib", password: "1234", online: true, lastSeen: Date.now() },
+        { username: "sumaiya", password: "1234", online: true, lastSeen: Date.now() }
+    ];
+    
+    let allMessages = [];
+    
+    // ======================== ডাটা লোড/সেভ ========================
+    function loadData() {
+        const savedUsers = localStorage.getItem("soad_users_v2");
+        if(savedUsers) {
+            users = JSON.parse(savedUsers);
+        } else {
+            saveUsers();
+        }
+        
+        const savedMessages = localStorage.getItem("soad_messages_v2");
+        if(savedMessages) {
+            allMessages = JSON.parse(savedMessages);
+        }
+    }
+    
+    function saveUsers() {
+        localStorage.setItem("soad_users_v2", JSON.stringify(users));
+    }
+    
+    function saveMessages() {
+        localStorage.setItem("soad_messages_v2", JSON.stringify(allMessages));
+    }
+    
+    // ======================== লগইন ========================
+    function doLogin() {
+        const username = document.getElementById('loginUsername').value.trim().toLowerCase();
+        const password = document.getElementById('loginPassword').value;
+        
+        const user = users.find(u => u.username === username && u.password === password);
+        
+        if(user) {
+            currentUser = username;
+            user.online = true;
+            user.lastSeen = Date.now();
+            saveUsers();
+            
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('chatPage').style.display = 'flex';
+            document.getElementById('currentUserName').innerText = username;
+            
+            updateOnlineList();
+            renderMessages();
+            startRealTimeListener();
+            
+            addSystemMessage(`✨ ${username} চ্যাটে জয়েন করেছেন!`);
+            broadcastStatus();
+        } else {
+            document.getElementById('loginError').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('loginError').style.display = 'none';
+            }, 2000);
+        }
+    }
+    
+    function doLogout() {
+        if(currentUser) {
+            const user = users.find(u => u.username === currentUser);
+            if(user) {
+                user.online = false;
+                user.lastSeen = Date.now();
+            }
+            saveUsers();
+            addSystemMessage(`👋 ${currentUser} চ্যাট ছেড়ে গেছেন`);
+            broadcastStatus();
+        }
+        currentUser = null;
+        currentChatWith = null;
+        document.getElementById('loginPage').style.display = 'flex';
+        document.getElementById('chatPage').style.display = 'none';
+        document.getElementById('loginUsername').value = '';
+        document.getElementById('loginPassword').value = '';
+    }
+    
+    // ======================== অনলাইন লিস্ট ========================
+    function updateOnlineList() {
+        const onlineUsers = users.filter(u => u.online === true && u.username !== currentUser);
+        const listHtml = onlineUsers.map(user => `
+            <li onclick="startPrivateChat('${user.username}')" class="${currentChatWith === user.username ? 'active' : ''}">
+                🟢 ${user.username}
+            </li>
+        `).join('');
+        
+        document.getElementById('onlineUsersList').innerHTML = listHtml || '<li style="opacity:0.6;">😴 কেউ অনলাইনে নেই</li>';
+    }
+    
+    // ======================== চ্যাট মোড ========================
+    function startPrivateChat(username) {
+        currentChatWith = username;
+        document.getElementById('chatWithName').innerHTML = `${username} 🔒`;
+        document.getElementById('chatStatus').innerHTML = 'প্রাইভেট চ্যাট';
+        document.getElementById('backToPublicBtn').style.display = 'block';
+        renderMessages();
+    }
+    
+    function switchToPublic() {
+        currentChatWith = null;
+        document.getElementById('chatWithName').innerHTML = 'সকলের সাথে 💬';
+        document.getElementById('chatStatus').innerHTML = 'পাবলিক চ্যাট';
+        document.getElementById('backToPublicBtn').style.display = 'none';
+        renderMessages();
+    }
+    
+    // ======================== মেসেজ রেন্ডার ========================
+    function renderMessages() {
+        const messagesDiv = document.getElementById('messagesArea');
+        
+        let filtered = [];
+        if(currentChatWith === null) {
+            filtered = allMessages.filter(m => m.type === 'public');
+        } else {
+            filtered = allMessages.filter(m => 
+                m.type === 'private' && 
+                ((m.from === currentUser && m.to === currentChatWith) ||
+                 (m.from === currentChatWith && m.to === currentUser))
+            );
+        }
+        
+        filtered.sort((a,b) => a.timestamp - b.timestamp);
+        
+        messagesDiv.innerHTML = '';
+        if(filtered.length === 0) {
+            messagesDiv.innerHTML = '<div class="system-msg">💬 কোনো মেসেজ নেই। প্রথম মেসেজ পাঠান!</div>';
+        }
+        
+        filtered.forEach(msg => {
+            const isOwn = (msg.from === currentUser);
+            const div = document.createElement('div');
+            div.className = `message ${isOwn ? 'own' : 'other'}`;
+            
+            if(!isOwn) {
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'sender';
+                nameSpan.innerText = msg.from;
+                div.appendChild(nameSpan);
+            }
+            
+            const textSpan = document.createElement('span');
+            textSpan.innerText = msg.text;
+            div.appendChild(textSpan);
+            
+            const timeSpan = document.createElement('small');
+            timeSpan.innerText = msg.time;
+            div.appendChild(timeSpan);
+            
+            messagesDiv.appendChild(div);
+        });
+        
+        scrollToBottom();
+    }
+    
+    function addSystemMessage(text) {
+        const messagesDiv = document.getElementById('messagesArea');
+        const div = document.createElement('div');
+        div.className = 'system-msg';
+        div.innerText = `📢 ${text}`;
+        messagesDiv.appendChild(div);
+        scrollToBottom();
+    }
+    
+    // ======================== মেসেজ পাঠানো (রিয়েল টাইম) ========================
+    function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const text = input.value.trim();
+        if(text === "") return;
+        
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' });
+        
+        const newMsg = {
+            id: Date.now() + Math.random(),
+            from: currentUser,
+            to: currentChatWith || 'public',
+            text: text,
+            time: timeString,
+            timestamp: Date.now(),
+            type: currentChatWith === null ? 'public' : 'private'
+        };
+        
+        allMessages.push(newMsg);
+        saveMessages();
+        
+        input.value = "";
+        renderMessages();
+        
+        // টাইপিং বন্ধ
+        if(typingTimeout) clearTimeout(typingTimeout);
+        
+        // ইভেন্ট ট্রিগার (রিয়েল টাইমের জন্য)
+        triggerStorageEvent();
+    }
+    
+    // ======================== টাইপিং ইন্ডিকেটর ========================
+    function setTyping(isTyping) {
+        if(!currentChatWith) return;
+        
+        const typingKey = `typing_${currentChatWith}_to_${currentUser}`;
+        if(isTyping) {
+            localStorage.setItem(typingKey, Date.now().toString());
+        } else {
+            localStorage.removeItem(typingKey);
+        }
+        triggerStorageEvent();
+    }
+    
+    function checkTyping() {
+        if(!currentChatWith) {
+            document.getElementById('typingIndicator').innerHTML = '';
+            return;
+        }
+        
+        const typingKey = `typing_${currentChatWith}_to_${currentUser}`;
+        const typingTime = localStorage.getItem(typingKey);
+        if(typingTime && (Date.now() - parseInt(typingTime)) < 2000) {
+            document.getElementById('typingIndicator').innerHTML = `✍️ ${currentChatWith} টাইপ করছেন...`;
+        } else {
+            document.getElementById('typingIndicator').innerHTML = '';
+        }
+    }
+    
+    // ======================== রিয়েল টাইম লিসেনার (storage event) ========================
+    function triggerStor
