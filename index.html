@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚡ SOAD CHAT | রিয়েল টাইম ইনস্ট্যান্ট</title>
+    <title>💬 SOAD CHAT | রিয়েল টাইম</title>
     <style>
         * {
             margin: 0;
@@ -21,7 +21,6 @@
             overflow: hidden;
         }
 
-        /* লগইন পেইজ */
         .login-container {
             width: 100%;
             display: flex;
@@ -102,7 +101,6 @@
             display: none;
         }
 
-        /* চ্যাট পেইজ */
         .chat-container {
             display: flex;
             width: 95vw;
@@ -146,6 +144,7 @@
             color: white;
             font-weight: bold;
             margin: 8px 0;
+            font-size: 1.1rem;
         }
 
         .logout-btn {
@@ -358,13 +357,13 @@
 
 <div id="loginPage" class="login-container">
     <div class="login-card">
-        <div class="logo">💬⚡</div>
+        <div class="logo">💬🔥</div>
         <h1>SOAD CHAT</h1>
-        <div class="sub">রিয়েল টাইম ইনস্ট্যান্ট মেসেজিং</div>
+        <div class="sub">রিয়েল টাইম সিকিউর চ্যাট</div>
         <input type="text" id="loginUsername" placeholder="👤 ইউজারনেম" maxlength="20">
         <input type="password" id="loginPassword" placeholder="🔒 পাসওয়ার্ড">
         <button onclick="doLogin()">🚀 লগইন করুন</button>
-        <div id="loginError" class="error-msg">❌ ভুল নাম বা পাসওয়ার্ড!</div>
+        <div id="loginError" class="error-msg">❌ ভুল ইউজারনেম বা পাসওয়ার্ড!</div>
     </div>
 </div>
 
@@ -379,7 +378,7 @@
                 <button class="logout-btn" onclick="doLogout()">🚪 লগআউট</button>
             </div>
             <div class="online-section">
-                <div class="online-title">🟢 অনলাইন (ক্লিক করে প্রাইভেট চ্যাট)</div>
+                <div class="online-title">🟢 অনলাইন সদস্য (ক্লিক করুন)</div>
                 <ul class="online-users-list" id="onlineUsersList"></ul>
             </div>
         </div>
@@ -394,7 +393,7 @@
             </div>
 
             <div class="messages-area" id="messagesArea">
-                <div class="system-msg">✨ SOAD চ্যাটে স্বাগতম! রিয়েল টাইমে কথা বলুন...</div>
+                <div class="system-msg">✨ SOAD চ্যাটে স্বাগতম!</div>
             </div>
 
             <div class="typing-indicator" id="typingIndicator"></div>
@@ -408,90 +407,124 @@
 </div>
 
 <script>
-    // ======================== কনফিগারেশন ========================
+    // ======================== ইউজার ডাটাবেস (localStorage) ========================
     let currentUser = null;
-    let currentChatWith = null; // null = public, else = username
+    let currentChatWith = null;
     let typingTimeout = null;
+    let messageCheckInterval = null;
     
-    // ডিফল্ট ইউজার (নাম + পাস)
-    let users = [
-        { username: "soad", password: "1234", online: true, lastSeen: Date.now() },
-        { username: "riya", password: "1234", online: true, lastSeen: Date.now() },
-        { username: "tanvir", password: "1234", online: true, lastSeen: Date.now() },
-        { username: "nusrat", password: "1234", online: true, lastSeen: Date.now() },
-        { username: "rakib", password: "1234", online: true, lastSeen: Date.now() },
-        { username: "sumaiya", password: "1234", online: true, lastSeen: Date.now() }
+    // ডিফল্ট ইউজার (নাম + পাসওয়ার্ড)
+    const defaultUsers = [
+        { username: "soad", password: "1234", online: false },
+        { username: "riya", password: "1234", online: false },
+        { username: "tanvir", password: "1234", online: false },
+        { username: "nusrat", password: "1234", online: false },
+        { username: "rakib", password: "1234", online: false },
+        { username: "sumaiya", password: "1234", online: false },
+        { username: "shakib", password: "1234", online: false },
+        { username: "tahmina", password: "1234", online: false }
     ];
     
+    // মেসেজ স্টোরেজ
     let allMessages = [];
     
     // ======================== ডাটা লোড/সেভ ========================
-    function loadData() {
-        const savedUsers = localStorage.getItem("soad_users_v2");
+    function loadUsers() {
+        const savedUsers = localStorage.getItem("soad_chat_users");
         if(savedUsers) {
-            users = JSON.parse(savedUsers);
+            return JSON.parse(savedUsers);
         } else {
-            saveUsers();
-        }
-        
-        const savedMessages = localStorage.getItem("soad_messages_v2");
-        if(savedMessages) {
-            allMessages = JSON.parse(savedMessages);
+            localStorage.setItem("soad_chat_users", JSON.stringify(defaultUsers));
+            return [...defaultUsers];
         }
     }
     
-    function saveUsers() {
-        localStorage.setItem("soad_users_v2", JSON.stringify(users));
+    function saveUsers(users) {
+        localStorage.setItem("soad_chat_users", JSON.stringify(users));
+    }
+    
+    function loadMessages() {
+        const savedMessages = localStorage.getItem("soad_chat_messages");
+        if(savedMessages) {
+            allMessages = JSON.parse(savedMessages);
+        } else {
+            allMessages = [];
+        }
     }
     
     function saveMessages() {
-        localStorage.setItem("soad_messages_v2", JSON.stringify(allMessages));
+        localStorage.setItem("soad_chat_messages", JSON.stringify(allMessages));
     }
     
-    // ======================== লগইন ========================
+    // ======================== লগইন ফাংশন ========================
     function doLogin() {
         const username = document.getElementById('loginUsername').value.trim().toLowerCase();
         const password = document.getElementById('loginPassword').value;
         
+        if(username === "" || password === "") {
+            showError("দয়া করে ইউজারনেম এবং পাসওয়ার্ড দিন!");
+            return;
+        }
+        
+        const users = loadUsers();
         const user = users.find(u => u.username === username && u.password === password);
         
         if(user) {
             currentUser = username;
-            user.online = true;
-            user.lastSeen = Date.now();
-            saveUsers();
             
+            // অনলাইন স্ট্যাটাস আপডেট
+            user.online = true;
+            saveUsers(users);
+            
+            // UI দেখানো
             document.getElementById('loginPage').style.display = 'none';
             document.getElementById('chatPage').style.display = 'flex';
             document.getElementById('currentUserName').innerText = username;
             
+            // মেসেজ লোড
+            loadMessages();
+            
+            // রিয়েল টাইম লিসেনার শুরু
+            startRealTimeListeners();
+            
+            // সিস্টেম মেসেজ
+            addSystemMessage(`✨ ${username} চ্যাটে জয়েন করেছেন!`);
+            
+            // ফোর্স আপডেট
             updateOnlineList();
             renderMessages();
-            startRealTimeListener();
-            
-            addSystemMessage(`✨ ${username} চ্যাটে জয়েন করেছেন!`);
-            broadcastStatus();
         } else {
-            document.getElementById('loginError').style.display = 'block';
-            setTimeout(() => {
-                document.getElementById('loginError').style.display = 'none';
-            }, 2000);
+            showError("❌ ভুল ইউজারনেম বা পাসওয়ার্ড!");
         }
+    }
+    
+    function showError(msg) {
+        const errorDiv = document.getElementById('loginError');
+        errorDiv.innerText = msg;
+        errorDiv.style.display = 'block';
+        setTimeout(() => {
+            errorDiv.style.display = 'none';
+        }, 2000);
     }
     
     function doLogout() {
         if(currentUser) {
+            const users = loadUsers();
             const user = users.find(u => u.username === currentUser);
             if(user) {
                 user.online = false;
-                user.lastSeen = Date.now();
+                saveUsers(users);
             }
-            saveUsers();
             addSystemMessage(`👋 ${currentUser} চ্যাট ছেড়ে গেছেন`);
-            broadcastStatus();
         }
+        
         currentUser = null;
         currentChatWith = null;
+        
+        if(messageCheckInterval) {
+            clearInterval(messageCheckInterval);
+        }
+        
         document.getElementById('loginPage').style.display = 'flex';
         document.getElementById('chatPage').style.display = 'none';
         document.getElementById('loginUsername').value = '';
@@ -500,7 +533,9 @@
     
     // ======================== অনলাইন লিস্ট ========================
     function updateOnlineList() {
+        const users = loadUsers();
         const onlineUsers = users.filter(u => u.online === true && u.username !== currentUser);
+        
         const listHtml = onlineUsers.map(user => `
             <li onclick="startPrivateChat('${user.username}')" class="${currentChatWith === user.username ? 'active' : ''}">
                 🟢 ${user.username}
@@ -584,7 +619,7 @@
         scrollToBottom();
     }
     
-    // ======================== মেসেজ পাঠানো (রিয়েল টাইম) ========================
+    // ======================== মেসেজ পাঠানো ========================
     function sendMessage() {
         const input = document.getElementById('messageInput');
         const text = input.value.trim();
@@ -612,7 +647,7 @@
         // টাইপিং বন্ধ
         if(typingTimeout) clearTimeout(typingTimeout);
         
-        // ইভেন্ট ট্রিগার (রিয়েল টাইমের জন্য)
+        // অন্য ট্যাবের জন্য ইভেন্ট
         triggerStorageEvent();
     }
     
@@ -620,29 +655,8 @@
     function setTyping(isTyping) {
         if(!currentChatWith) return;
         
-        const typingKey = `typing_${currentChatWith}_to_${currentUser}`;
+        const typingKey = `soad_typing_${currentChatWith}_to_${currentUser}`;
         if(isTyping) {
             localStorage.setItem(typingKey, Date.now().toString());
         } else {
-            localStorage.removeItem(typingKey);
-        }
-        triggerStorageEvent();
-    }
-    
-    function checkTyping() {
-        if(!currentChatWith) {
-            document.getElementById('typingIndicator').innerHTML = '';
-            return;
-        }
-        
-        const typingKey = `typing_${currentChatWith}_to_${currentUser}`;
-        const typingTime = localStorage.getItem(typingKey);
-        if(typingTime && (Date.now() - parseInt(typingTime)) < 2000) {
-            document.getElementById('typingIndicator').innerHTML = `✍️ ${currentChatWith} টাইপ করছেন...`;
-        } else {
-            document.getElementById('typingIndicator').innerHTML = '';
-        }
-    }
-    
-    // ======================== রিয়েল টাইম লিসেনার (storage event) ========================
-    function triggerStor
+                    
